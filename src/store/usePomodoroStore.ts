@@ -1,3 +1,8 @@
+// Global app state using Zustand. This store holds:
+// - Task list with CRUD actions
+// - Pomodoro timer state (mode, durations, remaining seconds)
+// - Timer controls (start/stop/reset) and a pure `tick()` that advances time
+// Persistence is handled via `persist` to localStorage.
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 
@@ -32,6 +37,7 @@ const initialWork = 25 * 60
 const initialBreak = 5 * 60
 
 export const usePomodoroStore = create<PomodoroState>()(
+  // `persist` wraps the store creator to sync selected fields to localStorage.
   persist(
     (set, get) => ({
       // tasks
@@ -60,12 +66,14 @@ export const usePomodoroStore = create<PomodoroState>()(
       breakDuration: initialBreak,
       start: () => set({ isRunning: true }),
       stop: () => set({ isRunning: false }),
+      // Reset stops the timer and restores remaining seconds for the current mode.
       reset: () =>
         set((state) => ({
           isRunning: false,
           secondsRemaining:
             state.mode === 'work' ? state.workDuration : state.breakDuration,
         })),
+      // Pure tick: advance time or flip mode when reaching 0.
       tick: () => {
         const { secondsRemaining, mode, workDuration, breakDuration } = get()
         if (secondsRemaining > 0) {
@@ -80,6 +88,7 @@ export const usePomodoroStore = create<PomodoroState>()(
     }),
     {
       name: 'pomodoro-store',
+      // Store only selected fields to keep persisted payload small and future-proof.
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({
         tasks: state.tasks,
